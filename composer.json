@@ -13,5 +13,8 @@
     },
     "require": {
         "ext-bcmath": "*"
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit tests/*"
     }
 }

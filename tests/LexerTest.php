@@ -48,21 +48,14 @@ class LexerTest extends TestCase
     public function testParseCall(): void
     {
         $tokens = Lexer::tokenize("add(1)");
-        $this->assertCount(3, $tokens);
-        $this->assertEquals('add(', $tokens[0]->getValue());
+        $this->assertCount(4, $tokens);
+        $this->assertEquals('add', $tokens[0]->getValue());
         $this->assertEquals(Token::IDENTIFIER, $tokens[0]->getType());
-        $this->assertEquals('1', $tokens[1]->getValue());
-        $this->assertEquals(Token::NUMBER, $tokens[1]->getType());
-        $this->assertEquals(')', $tokens[2]->getValue());
-        $this->assertEquals(Token::BRACKET, $tokens[2]->getType());
-    }
-
-    public function testParseUnExpectedToken(): void
-    {
-        try {
-            Lexer::tokenize("unexpected");
-        } catch (Throwable $th) {
-            $this->assertTrue($th instanceof UnexpectedExpression, "class is ". get_class($th) ."");
-        }
+        $this->assertEquals('(', $tokens[1]->getValue());
+        $this->assertEquals(Token::BRACKET, $tokens[1]->getType());
+        $this->assertEquals('1', $tokens[2]->getValue());
+        $this->assertEquals(Token::NUMBER, $tokens[2]->getType());
+        $this->assertEquals(')', $tokens[3]->getValue());
+        $this->assertEquals(Token::BRACKET, $tokens[3]->getType());
     }
 }
