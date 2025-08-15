@@ -2,6 +2,7 @@
     "name": "lang/equation",
     "type": "library",
     "license": "MIT",
+    "description": "A PHP formula parser based on bc_math",
     "autoload": {
         "psr-4": {
             "Lang\\Equation\\": "src/",
