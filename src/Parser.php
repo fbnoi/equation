@@ -2,121 +2,128 @@
 
 namespace Lang\Equation;
 
-use Lang\Equation\Exception\ParseExprFailed;
 use Lang\Equation\Exception\UnexpectedToken;
+use Lang\Equation\Expr\Args;
 use Lang\Equation\Expr\Binary;
 use Lang\Equation\Expr\Bracket;
-use Lang\Equation\Expr\Expr;
+use Lang\Equation\Expr\Call;
+use Lang\Equation\Expr;
 use Lang\Equation\Expr\Number;
 use Lang\Equation\Expr\Param;
 
-class Parser {
+class Parser
+{
 
-    private const PROV = [
-        '(' => -1,
-        '+' => 0,
-        '-' => 0,
-        '*' => 2,
-        '/' => 2,
-        '^' => 4,
-        ')' => 512,
-    ];
+    // EBNF：
+    // Expression  → Term (( '+' | '-' ) Term)*
+    // Term        → Factor (( '*' | '/' ) Factor)*
+    // Factor      → NUMBER | '(' Expression ')' | IDENTIFIER '(' Arguments? ')'
+    // Arguments   → Expression (',' Expression)*
 
-    /**
-     * @var array<Token>
-     */
-    private array $opStack = [];
+    private TokenStream $tokens;
 
-    /**
-     * @var array<Expr>
-     */
-    private array $exprStack = [];
-
-    /**
-     * @param array<Token> $tokens
-     * @throws UnexpectedToken
-     * @throws ParseExprFailed|Exception\InvalidValue
-     */
-    public function parse(array $tokens): Expr
+    
+    public function parse(TokenStream $tokens): Expr
     {
-        foreach ($tokens as $token) {
-            switch ($token->getType()) {
-                case Token::NUMBER:
-                    $this->exprStack[] = Number::instance($token);
-                    break;
-                case Token::PARAM:
-                    $this->exprStack[] = Param::instance($token);
-                    break;
-                case Token::OP:
-                    while ($this->needMerge($token) && $op = array_pop($this->opStack)) {
-                        $this->merge($op);
-                    }
-                    $this->opStack[] = $token;
-                    break;
-                case Token::BRACKET:
-                    if ($token->getValue() === '(') {
-                        $this->opStack[] = $token;
-                    } else {
-                        while ($this->needMerge($token) && $op = array_pop($this->opStack)) {
-                            $this->merge($op);
-                        }
-                        $op = array_pop($this->opStack);
-                        if (!$op || $op->getValue() !== '(') {
-                            throw new UnexpectedToken($token->getValue());
-                        }
-                        $this->merge($op);
-                    }
-                    break;
-                default:
-                    break;
+        $this->tokens = $tokens;
+        $this->tokens->rewind();
+        $expr = $this->parseExpression();
+        if ($this->tokens->hasNext()) {
+            throw new UnexpectedToken($this->tokens->current()->getValue());
+        }
+        return $expr;
+    }
+
+    private function parseExpression(): Expr
+    {
+        $left = $this->parseTerm();
+        while ($token = $this->tokens->current()) {
+            if ($token->getType() === Token::OP && ($token->getValue() === '+' || $token->getValue() === '-')) {
+                $this->tokens->next();
+                $right = $this->parseTerm();
+                $left = new Binary($left, $right, $token->getValue());
+            } else {
+                break;
             }
         }
-        while ($op = array_pop($this->opStack)) {
-            $this->merge($op);
-        }
-
-        if (count($this->exprStack) !== 1) {
-            throw new ParseExprFailed($tokens);
-        }
-
-        return array_pop($this->exprStack);
+        return $left;
     }
 
-    private function needMerge(Token $token): bool
+    private function parseTerm(): Expr
     {
-        if (!$len = count($this->opStack)) {
-            return false;
+        $left = $this->parseFactor();
+        while ($token = $this->tokens->current()) {
+            if ($token->getType() === Token::OP && ($token->getValue() === '*' || $token->getValue() === '/')) {
+                $this->tokens->next();
+                $right = $this->parseFactor();
+                $left = new Binary($left, $right, $token->getValue());
+            } else {
+                break;
+            }
         }
-        $op = $this->opStack[$len -1];
-
-        if ($op->getValue() === '(') {
-            return false;
-        }
-
-        if ($token->getValue() === ')') {
-            return true;
-        }
-
-        return static::PROV[$op->getValue()] > static::PROV[$token->getValue()];
+        return $left;
     }
 
-    /**
-     * @throws UnexpectedToken
-     */
-    private function merge(Token $token): void
+    private function parseFactor(): Expr
     {
-        if ($token->getType() === Token::OP && ($y = array_pop($this->exprStack)) && $x = array_pop($this->exprStack)) {
-            $expr = new Binary($x, $y, $token->getValue());
-            $this->exprStack[] = $expr;
+        $token = $this->tokens->current();
+        if (!$token) {
+            throw new UnexpectedToken('End of input');
+        }
 
-            return;
-        } elseif ($token->getValue() === '(' && $x = array_pop($this->exprStack)) {
-            $expr = new Bracket($x);
-            $this->exprStack[] = $expr;
-
-            return;
+        switch ($token->getType()) {
+            case Token::NUMBER:
+                $this->tokens->next();
+                return new Number($token);
+            case Token::PARAM:
+                $this->tokens->next();
+                return new Param($token);
+            case Token::IDENTIFIER:
+                return $this->parseFunctionCall();
+            case Token::BRACKET:
+                if ($token->getValue() === '(') {
+                    $this->tokens->next();
+                    $expr = $this->parseExpression();
+                    if ($this->tokens->current()->getValue() !== ')') {
+                        throw new UnexpectedToken('Expected closing bracket');
+                    }
+                    $this->tokens->next();
+                    return new Bracket($expr);
+                }
+                break;
         }
 
         throw new UnexpectedToken($token->getValue());
+    }
+
+    private function parseFunctionCall(): Expr
+    {
+        $token = $this->tokens->current();
+        if (!$token || $token->getType() !== Token::IDENTIFIER) {
+            throw new UnexpectedToken('Expected function identifier');
+        }
+
+        $fnName = $token->getValue();
+        $this->tokens->next();
+
+        if ($this->tokens->current()->getValue() !== '(') {
+            throw new UnexpectedToken('Expected opening bracket for function arguments');
+        }
+        $this->tokens->next();
+
+        $args = [];
+        while ($this->tokens->current() && $this->tokens->current()->getValue() !== ')') {
+            $args[] = $this->parseExpression();
+            if ($this->tokens->current() && $this->tokens->current()->getValue() === ',') {
+                $this->tokens->next();
+            }
+        }
+
+        if (!$this->tokens->current() || $this->tokens->current()->getValue() !== ')') {
+            throw new UnexpectedToken('Expected closing bracket for function arguments');
+        }
+        $this->tokens->next();
+
+        return new Call($fnName, new Args($args));
     }
 }

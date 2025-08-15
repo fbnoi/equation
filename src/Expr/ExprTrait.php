@@ -2,6 +2,8 @@
 
 namespace Lang\Equation\Expr;
 
+use Lang\Equation\Expr;
+
 trait ExprTrait
 {
     function add(Expr $expr): Expr
@@ -22,10 +24,5 @@ trait ExprTrait
     function div(Expr $expr): Expr
     {
         return new Binary($this, $expr, Expr::OP_DIV);
-    }
-
-    function pow(Expr $expr): Expr
-    {
-        return new Binary($this, $expr, Expr::OP_POW);
     }
 }

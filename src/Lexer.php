@@ -4,18 +4,19 @@ namespace Lang\Equation;
 
 use Lang\Equation\Exception\UnexpectedExpression;
 
-class Lexer {
+class Lexer
+{
 
     public const NUMBER = '/^\d+(\.\d+)?+/';
     public const BRACKET = '/^[()]/';
-    public const OP = '/^[+\-*\/^]/';
+    public const OP = '/^[+\-*\/^,]/';
     public const PARAM = '/^:[a-zA-Z]+:/';
+    public const IDENTIFIER = '/^[a-zA-Z]([0-9a-zA-Z_]?)+/';
 
     /**
-     * @return array<Token>
      * @throws UnexpectedExpression
      */
-    public static function tokenize(string $expression): array
+    public static function tokenize(string $expression): TokenStream
     {
         $tokens = [];
         while (true) {
@@ -28,6 +29,8 @@ class Lexer {
                 $tokens[] = Token::operator($matches[0]);
             } elseif (preg_match(self::PARAM, $expression, $matches)) {
                 $tokens[] = Token::param($matches[0]);
+            } elseif (preg_match(self::IDENTIFIER, $expression, $matches)) {
+                $tokens[] = Token::identifier($matches[0]);
             } else {
                 throw new UnexpectedExpression($expression);
             }
@@ -39,6 +42,6 @@ class Lexer {
             }
         }
 
-        return $tokens;
+        return new TokenStream($tokens);
     }
 }

@@ -2,38 +2,32 @@
 
 namespace Lang\Equation\Expr;
 
+use Lang\Equation\Exception\InvalidToken;
 use Lang\Equation\Exception\InvalidValue;
 use Lang\Equation\Token;
+use Lang\Equation\Expr;
 
 class Number implements Expr
 {
     use ExprTrait;
-    
+
     private float $value;
 
     /**
-     * @throws InvalidValue
+     * @throws InvalidToken
      */
-    private function __construct(string $num)
+    public function __construct(Token $token)
     {
-        if (!is_numeric($num)) {
-            throw new InvalidValue($num);
+        if (Token::NUMBER !== $token->getType()) {
+            throw new InvalidToken(Token::NUMBER, $token->getType());
         }
-        $this->value = (float)$num;
-    }
-
-    /**
-     * @throws InvalidValue
-     */
-    public static function instance(Token $num): static
-    {
-        return new static($num->getValue());
+        $this->value = (float) $token->getValue();
     }
 
     /**
      * @param array<string, int|float>|null $params
      */
-    public function getValue(array $params = null): float
+    public function getValue(?array $params = null): float
     {
         return $this->value;
     }

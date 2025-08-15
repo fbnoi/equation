@@ -2,6 +2,8 @@
 
 namespace Lang\Equation\Expr;
 
+use Lang\Equation\Expr;
+
 class Bracket implements Expr
 {
     use ExprTrait;
@@ -16,7 +18,7 @@ class Bracket implements Expr
     /**
      * @param array<string, int|float>|null $params
      */
-    public function getValue(array $params = null): float
+    public function getValue(?array $params = null): float
     {
         return $this->expr->getValue($params);
     }

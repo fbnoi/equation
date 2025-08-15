@@ -3,11 +3,12 @@
 namespace Lang\Equation\Expr;
 
 use Lang\Equation\Exception\DividedByZero;
+use Lang\Equation\Expr;
 
 class Binary implements Expr
 {
     use ExprTrait;
-    
+
     private Expr $x;
     private Expr $y;
     private string $op;
@@ -29,9 +30,10 @@ class Binary implements Expr
     /**
      * @param array<string, int|float>|null $params
      * 
+     * @throws InvalidValue
      * @throws DividedByZero
      */
-    public function getValue(array $params = null, int $scale = Expr::DEFAULT_MAX_SCALE): float
+    public function getValue(?array $params = null, int $scale = Expr::DEFAULT_MAX_SCALE): float
     {
         $x = $this->x->getValue($params);
         $y = $this->y->getValue($params);
@@ -43,7 +45,6 @@ class Binary implements Expr
             Expr::OP_SUB => bcsub($x, $y, Expr::DEFAULT_MAX_SCALE),
             Expr::OP_MUL => bcmul($x, $y, Expr::DEFAULT_MAX_SCALE),
             Expr::OP_DIV => bcdiv($x, $y, Expr::DEFAULT_MAX_SCALE),
-            Expr::OP_POW => bcpow($x, $y, Expr::DEFAULT_MAX_SCALE),
         };
 
         return round($ret, $scale);

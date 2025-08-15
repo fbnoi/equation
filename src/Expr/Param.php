@@ -2,9 +2,11 @@
 
 namespace Lang\Equation\Expr;
 
+use Lang\Equation\Exception\InvalidToken;
 use Lang\Equation\Exception\InvalidValue;
 use Lang\Equation\Exception\NoValueIsProvided;
 use Lang\Equation\Token;
+use Lang\Equation\Expr;
 
 class Param implements Expr
 {
@@ -12,22 +14,21 @@ class Param implements Expr
     
     private ?string $name;
 
-    private function __construct(string $name)
+    public function __construct(Token $token)
     {
-        $this->name = $name;
-    }
-
-    public static function instance(Token $param): static
-    {
-        return new static(trim($param->getValue(), ':'));
+        if (Token::PARAM !== $token->getType()) {
+            throw new InvalidToken(Token::PARAM, $token->getType());
+        }
+        $this->name = trim($token->getValue(), ':');
     }
 
     /**
      * @param array<string, int|float>|null $params
+     *
      * @throws NoValueIsProvided
      * @throws InvalidValue
      */
-    public function getValue(array $params = null): float
+    public function getValue(?array $params = null): float
     {
         if ($num = $params[$this->name] ?? false) {
             if (is_numeric($num)) {

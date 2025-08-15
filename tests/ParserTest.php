@@ -4,78 +4,73 @@ namespace Tests;
 
 use Lang\Equation\Exception\InvalidValue;
 use Lang\Equation\Exception\NoValueIsProvided;
-use Lang\Equation\Exception\ParseExprFailed;
 use Lang\Equation\Exception\UnexpectedExpression;
 use Lang\Equation\Exception\UnexpectedToken;
 use Lang\Equation\Lexer;
 use Lang\Equation\Parser;
 use Lang\Equation\Expr\Binary;
 use Lang\Equation\Expr\Bracket;
+use Lang\Equation\Expr;
 use Lang\Equation\Expr\Number;
 use Lang\Equation\Expr\Param;
 use PHPUnit\Framework\TestCase;
 
 class ParserTest extends TestCase
 {
-    /**
-     * @throws UnexpectedToken
-     * @throws InvalidValue
-     * @throws UnexpectedExpression
-     * @throws ParseExprFailed
-     */
-    public function testParseNum(): void
+
+    public function parseExpr(string $expr): Expr
     {
-        $tokens = Lexer::tokenize(" 1.23");
+        $tokens = Lexer::tokenize($expr);
         $parser = new Parser();
-        $expr = $parser->parse($tokens);
-        $this->assertInstanceOf(Number::class, $expr);
-        $this->assertEquals(1.23, $expr->getValue());
+        return $parser->parse($tokens);
     }
 
     /**
      * @throws UnexpectedToken
      * @throws InvalidValue
      * @throws UnexpectedExpression
-     * @throws ParseExprFailed
+     */
+    public function testParseNum(): void
+    {
+        $expr = $this->parseExpr(" 1.23");
+        $this->assertInstanceOf(Number::class, $expr);
+        $this->assertEquals('1.23', $expr->raw());
+    }
+
+    /**
+     * @throws UnexpectedToken
+     * @throws InvalidValue
+     * @throws UnexpectedExpression
      * @throws NoValueIsProvided
      */
     public function testParseParam(): void
     {
-        $tokens = Lexer::tokenize(" :var:");
-        $parser = new Parser();
-        $expr = $parser->parse($tokens);
+        $expr = $this->parseExpr(" :var:");
         $this->assertInstanceOf(Param::class, $expr);
-        $this->assertEquals(1.23, $expr->getValue(['var' => 1.23]));
+        $this->assertEquals(':var:', $expr->raw());
     }
 
     /**
      * @throws UnexpectedToken
      * @throws InvalidValue
      * @throws UnexpectedExpression
-     * @throws ParseExprFailed
      */
     public function testParseBracket(): void
     {
-        $tokens = Lexer::tokenize("(1)");
-        $parser = new Parser();
-        $expr = $parser->parse($tokens);
+        $expr = $this->parseExpr("( 1) ");
         $this->assertInstanceOf(Bracket::class, $expr);
-        $this->assertEquals(1, $expr->getValue());
+        $this->assertEquals('(1)', $expr->raw());
     }
 
     /**
      * @throws UnexpectedToken
      * @throws InvalidValue
      * @throws UnexpectedExpression
-     * @throws ParseExprFailed
      */
     public function testParseBinary(): void
     {
-        $tokens = Lexer::tokenize("1 + 1");
-        $parser = new Parser();
-        $expr = $parser->parse($tokens);
+        $expr = $this->parseExpr("1 + 1");
         $this->assertInstanceOf(Binary::class, $expr);
-        $this->assertEquals(2, $expr->getValue());
         $this->assertEquals('1+1', $expr->raw());
     }
 
@@ -83,24 +78,26 @@ class ParserTest extends TestCase
      * @throws UnexpectedToken
      * @throws InvalidValue
      * @throws UnexpectedExpression
-     * @throws ParseExprFailed
      */
     public function testParseBinary2(): void
     {
-        $tokens = Lexer::tokenize("1 + :var:");
-        $parser = new Parser();
-        $expr = $parser->parse($tokens);
+        $expr = $this->parseExpr("1 + :var:");
         $this->assertInstanceOf(Binary::class, $expr);
-        $this->assertEquals(3, $expr->getValue(['var' => 2]));
-        $this->assertEquals(2.1, $expr->getValue(['var' => 1.1]));
         $this->assertEquals('1+:var:', $expr->raw());
+    }
+
+
+    public function testFuncCallParse(): void
+    {
+        $expr = $this->parseExpr("1+func(1,2,3)");
+        $this->assertInstanceOf(Expr::class, $expr);
+        $this->assertEquals("1+func(1,2,3)", $expr->raw());
     }
 
     /**
      * @throws UnexpectedToken
      * @throws InvalidValue
      * @throws UnexpectedExpression
-     * @throws ParseExprFailed
      */
     public function testParseComplex(): void
     {

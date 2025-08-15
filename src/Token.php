@@ -7,6 +7,15 @@ class Token {
     public const PARAM = 2;
     public const OP = 3;
     public const BRACKET = 4;
+    public const IDENTIFIER = 5;
+
+    public const TYPES = [
+        self::NUMBER => 'number',
+        self::PARAM => 'param',
+        self::OP => 'operator',
+        self::BRACKET => 'bracket',
+        self::IDENTIFIER => 'identifier',
+    ];
 
     private int $type;
     private string $value;
@@ -38,6 +47,11 @@ class Token {
     public static function bracket(string $bk): static
     {
         return static::instance(static::BRACKET, $bk);
+    }
+
+    public static function identifier(string $identifier): static
+    {
+        return static::instance(static::IDENTIFIER, $identifier);
     }
 
     public function getType(): int

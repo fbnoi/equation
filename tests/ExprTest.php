@@ -1,9 +1,11 @@
 <?php
 
 namespace Tests;
+
 use Lang\Equation\Exception\DividedByZero;
 use Lang\Equation\Expr\Binary;
-use Lang\Equation\Expr\Expr;
+use Lang\Equation\Expr;
+use Lang\Equation\FunctionMap;
 use Lang\Equation\Lexer;
 use Lang\Equation\Parser;
 use PHPUnit\Framework\TestCase;
@@ -21,27 +23,31 @@ class ExprTest extends TestCase
     {
         $expr = $this->parseExpr("1");
         $this->assertEquals(1, $expr->getValue());
-        $this->assertEquals("1", $expr->raw());
     }
 
     public function testParam()
     {
         $expr = $this->parseExpr(":var:");
         $this->assertEquals(1, $expr->getValue(['var' => 1]));
-        $this->assertEquals(":var:", $expr->raw());
     }
 
     public function testBinary()
     {
         $expr = $this->parseExpr("1+1");
         $this->assertEquals(2, $expr->getValue());
-        $this->assertEquals("1+1", $expr->raw());
     }
 
     public function testBracket()
     {
         $expr = $this->parseExpr("(1)");
         $this->assertEquals(1, $expr->getValue());
+    }
+
+    public function testFunctionCall()
+    {
+        FunctionMap::set('max', fn(float $a, float $b) => max($a, $b));
+        $expr = $this->parseExpr("max(1,2)");
+        $this->assertEquals(2, $expr->getValue());
     }
 
     public function testOperation()
